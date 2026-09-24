@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>AI Adventure with Nova</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#D8F3EE; --bg2:#CDEBF3; --ink:#123F3C; --soft:#4A6B68;
+  --teal:#0E9E9A; --teal-d:#0A7471; --sun:#FFC83D; --violet:#6E5BF5;
+  --coral:#F0525B; --green:#23A865; --card:#FFFFFF; --line:#B9DDD7;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{
+  font-family:Arial, Helvetica, sans-serif; font-size:20px; line-height:1.45; color:var(--ink);
+  background:var(--bg);
+  background-image:radial-gradient(circle at 12% 18%, #E9FBF7 0 180px, transparent 181px),
+                   radial-gradient(circle at 92% 85%, var(--bg2) 0 260px, transparent 261px);
+  background-attachment:fixed; min-height:100vh;
+}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
+.brand{
+  position:fixed; top:calc(env(safe-area-inset-top,0px) + 10px); left:12px; z-index:50;
+  background:#fff; color:var(--teal-d); font-weight:700; font-size:14px;
+  padding:6px 12px; border-radius:20px; border:2px solid var(--line);
+}
+.wrap{max-width:1000px;margin:0 auto;padding:64px 18px 48px}
+h1{font-size:44px;line-height:1.1;margin:0 0 10px}
+h2{font-size:32px;line-height:1.15;margin:0 0 8px}
+h3{font-size:24px;margin:0 0 6px}
+p{margin:0 0 12px}
+.muted{color:var(--soft)}
+.screen{display:none}
+.screen.on{display:block}
+.btn{
+  border:none;border-radius:16px;padding:14px 26px;font-weight:700;font-size:22px;
+  background:var(--teal);color:#fff;box-shadow:0 5px 0 var(--teal-d);
+  transition:transform .08s, box-shadow .08s;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--teal-d)}
+.btn.sun{background:var(--sun);color:var(--ink);box-shadow:0 5px 0 #D9A21E}
+.btn.violet{background:var(--violet);box-shadow:0 5px 0 #4B3BC4}
+.btn.ghost{background:#fff;color:var(--ink);box-shadow:0 5px 0 var(--line);border:2px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* Login */
+.hero{display:grid;grid-template-columns:1fr 260px;gap:24px;align-items:center;margin-bottom:24px}
+.hero svg{width:100%;max-width:260px;height:auto}
+.sign{background:var(--card);border-radius:28px;padding:26px;border:3px solid var(--line)}
+.field{margin-bottom:18px}
+.field label{display:block;font-weight:700;margin-bottom:6px;font-size:22px}
+.field input{width:100%;font-size:24px;padding:12px 16px;border-radius:14px;border:3px solid var(--line);font-family:inherit}
+.classpick{display:flex;gap:12px;flex-wrap:wrap}
+.classpick button{flex:1;min-width:140px;padding:16px;border-radius:16px;border:3px solid var(--line);background:#fff;font-weight:700;font-size:24px;color:var(--ink)}
+.classpick button[aria-pressed="true"]{background:var(--sun);border-color:#D9A21E}
+.err{color:var(--coral);font-weight:700;min-height:28px}
+
+/* Menu */
+.hello{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.tile{
+  text-align:left;border:none;border-radius:26px;padding:22px 22px 20px;background:#fff;color:var(--ink);
+  border-left:14px solid var(--c);position:relative;box-shadow:0 6px 0 rgba(18,63,60,.12);
+}
+.tile .ic{font-size:46px;line-height:1;margin-bottom:8px;display:block}
+.tile .gn{font-size:15px;font-weight:700;color:var(--c);margin-bottom:2px;display:block}
+.tile .tt{font-size:25px;font-weight:700;display:block;margin-bottom:4px}
+.tile .bl{font-size:18px;color:var(--soft);display:block}
+.tile .done{position:absolute;top:16px;right:16px;background:var(--green);color:#fff;font-size:15px;font-weight:700;padding:4px 10px;border-radius:12px}
+.finishbar{margin-top:26px;background:#fff;border-radius:22px;padding:18px 22px;border:3px dashed var(--teal);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+
+/* Game shell */
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.howto{
+  background:#FFF8DE;border:3px solid var(--sun);border-radius:20px;padding:14px 18px;margin-bottom:16px;
+}
+.howto h3{font-size:22px}
+.howto ol{margin:4px 0 8px;padding-left:26px;font-size:19px}
+.hintbox{display:none;background:#fff;border-radius:14px;padding:10px 14px;margin-top:8px;border:2px solid var(--line);font-size:19px}
+.hintbox.on{display:block}
+.panel{background:#fff;border-radius:24px;padding:20px;border:3px solid var(--line)}
+.msg{font-weight:700;font-size:22px;min-height:34px;margin:12px 0}
+.msg.good{color:var(--green)} .msg.bad{color:var(--coral)}
+
+/* Game 1 */
+.g1grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-width:520px;margin:0 auto}
+.cell{aspect-ratio:1;border-radius:12px;background:#E9F7F4;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,6vw,42px);position:relative}
+.cell.road{background:#F4FBFA}
+.cell.home{background:#FFE9B8} .cell.school{background:#D9D3FF}
+.cell .lbl{position:absolute;bottom:2px;font-size:11px;font-weight:700;color:var(--soft)}
+.nova{display:inline-block;transition:transform .2s}
+.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.g1wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+.arrows{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,72px);gap:8px;justify-content:center;margin:8px 0 14px}
+.arrows button{font-size:34px;border-radius:16px;border:3px solid var(--line);background:#fff}
+.arrows .up{grid-column:2;grid-row:1}.arrows .lf{grid-column:1;grid-row:2}.arrows .dn{grid-column:2;grid-row:2}.arrows .rt{grid-column:3;grid-row:2}
+.cmds{display:flex;flex-wrap:wrap;gap:6px;min-height:58px;background:#F1FAF8;border-radius:14px;padding:8px;border:2px dashed var(--line)}
+.cmd{border:2px solid var(--line);background:#fff;border-radius:10px;font-size:22px;padding:4px 8px;display:flex;align-items:center;gap:4px}
+.cmd small{font-size:12px;color:var(--soft)}
+.cmd.now{background:var(--sun);border-color:#D9A21E}
+.cmd.oops{background:#FFD9DB;border-color:var(--coral)}
+
+/* Game 2 */
+.bigcard{text-align:center;padding:26px 16px;border-radius:26px;background:#F4FBFA;border:3px solid var(--line);margin-bottom:16px}
+.bigcard .em{font-size:88px;line-height:1.1}
+.bigcard .nm{font-size:30px;font-weight:700}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.choice button{padding:22px;border-radius:22px;border:none;font-size:30px;font-weight:700;color:#fff}
+.choice .ai{background:var(--violet);box-shadow:0 6px 0 #4B3BC4}
+.choice .notai{background:var(--coral);box-shadow:0 6px 0 #B83940}
+.progress{height:14px;background:#E3F3F0;border-radius:8px;overflow:hidden;margin-bottom:14px}
+.progress i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+
+/* Game 3 */
+.match{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.match .col{display:flex;flex-direction:column;gap:10px}
+.mi{text-align:left;padding:14px 16px;border-radius:16px;border:3px solid var(--line);background:#fff;font-size:19px;color:var(--ink);min-height:70px}
+.mi.q{font-weight:700;background:#F2F0FF;border-color:#CFC8FF}
+.mi.sel{border-color:var(--violet);background:#E4DFFF}
+.mi.ok{border-color:var(--green);background:#DDF6E8;color:#11613A;cursor:default}
+.mi.no{animation:shake .4s;border-color:var(--coral)}
+
+/* Game 4 */
+.chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:18px;min-height:60px}
+.chip{border:3px solid var(--line);background:#fff;border-radius:18px;padding:10px 14px;font-size:20px;font-weight:700;color:var(--ink)}
+.chip .e{font-size:30px;vertical-align:middle;margin-right:6px}
+.chip.sel{border-color:var(--violet);background:#E4DFFF;transform:scale(1.05)}
+.baskets{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.basket{border-radius:24px;padding:16px;min-height:170px;border:4px dashed;background:#fff;text-align:center;color:var(--ink)}
+.basket.in{border-color:var(--teal)} .basket.out{border-color:var(--violet)}
+.basket h3{font-size:26px}
+.basket .got{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font-size:30px}
+
+/* Game 5 */
+.train{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pet{border-radius:20px;border:3px solid var(--line);background:#fff;padding:10px;text-align:center}
+.pet .em{font-size:54px;line-height:1.2}
+.pet .lb{display:flex;gap:6px;justify-content:center;margin-top:6px}
+.pet .lb button{border:2px solid var(--line);background:#F4FBFA;border-radius:12px;padding:6px 10px;font-size:18px;font-weight:700;color:var(--ink)}
+.pet .lb button[aria-pressed="true"]{background:var(--sun);border-color:#D9A21E}
+.guess{font-size:20px;font-weight:700;margin-top:6px}
+
+/* Results */
+.cert{background:#fff;border-radius:28px;padding:26px;border:4px solid var(--teal)}
+.rrow{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:2px solid #E3F3F0;flex-wrap:wrap}
+.rrow:last-child{border-bottom:none}
+.rrow .sc{font-weight:700;font-size:22px;color:var(--teal-d)}
+.stars{font-size:26px;letter-spacing:2px}
+.share{margin-top:18px;background:#FFF8DE;border:3px solid var(--sun);border-radius:20px;padding:16px 18px}
+
+@media (max-width:760px){
+  body{font-size:18px}
+  h1{font-size:34px} h2{font-size:27px}
+  .hero{grid-template-columns:1fr}.hero svg{max-width:170px;margin:0 auto;display:block;order:-1}
+  .g1wrap{grid-template-columns:1fr}
+  .match{grid-template-columns:1fr}
+  .train{grid-template-columns:repeat(2,1fr)}
+  .choice button{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="brand">YoungIT Germany</div>
+
+<div class="wrap">
+
+<!-- LOGIN -->
+<section id="s-login" class="screen on">
+  <div class="hero">
+    <div>
+      <h1>AI Adventure with Nova</h1>
+      <p style="font-size:24px">Nova is a little robot who wants to learn about AI. Play 5 games, help Nova, and get your own result to share with your teacher.</p>
+    </div>
+    <svg viewBox="0 0 200 220" aria-label="Nova the robot">
+      <line x1="100" y1="18" x2="100" y2="44" stroke="#123F3C" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="100" cy="16" r="11" fill="#FFC83D" stroke="#123F3C" stroke-width="5"/>
+      <rect x="40" y="44" width="120" height="92" rx="30" fill="#0E9E9A" stroke="#123F3C" stroke-width="6"/>
+      <rect x="58" y="64" width="84" height="50" rx="18" fill="#E9FBF7"/>
+      <circle cx="82" cy="89" r="10" fill="#123F3C"/><circle cx="118" cy="89" r="10" fill="#123F3C"/>
+      <circle cx="85" cy="86" r="3" fill="#fff"/><circle cx="121" cy="86" r="3" fill="#fff"/>
+      <path d="M88 104 Q100 112 112 104" stroke="#123F3C" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <rect x="54" y="144" width="92" height="56" rx="18" fill="#6E5BF5" stroke="#123F3C" stroke-width="6"/>
+      <circle cx="100" cy="172" r="10" fill="#FFC83D" stroke="#123F3C" stroke-width="4"/>
+      <rect x="22" y="150" width="26" height="14" rx="7" fill="#0E9E9A" stroke="#123F3C" stroke-width="5"/>
+      <rect x="152" y="150" width="26" height="14" rx="7" fill="#0E9E9A" stroke="#123F3C" stroke-width="5"/>
+    </svg>
+  </div>
+  <div class="sign">
+    <h2>First, tell Nova who you are</h2>
+    <div class="field">
+      <label for="nm">Your name</label>
+      <input id="nm" autocomplete="off" maxlength="40" placeholder="Type your name">
+    </div>
+    <div class="field">
+      <label id="clab">Your class</label>
+      <div class="classpick" role="group" aria-labelledby="clab">
+        <button type="button" data-c="Class 4" aria-pressed="false">Class 4</button>
+        <button type="button" data-c="Class 5" aria-pressed="false">Class 5</button>
+      </div>
+    </div>
+    <div class="err" id="lerr"></div>
+    <button class="btn sun" id="startBtn">Start the games</button>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="s-menu" class="screen">
+  <div class="hello">
+    <div>
+      <h2 id="hi">Hi!</h2>
+      <p class="muted">Pick any game. You can play them in any order.</p>
+    </div>
+    <button class="btn ghost" id="newStudent" style="font-size:17px;padding:10px 16px">New student</button>
+  </div>
+  <div class="map" id="tiles"></div>
+  <div class="finishbar">
+    <div><h3 style="margin:0">Done playing?</h3><span class="muted" id="doneCount">Play at least one game to see your result.</span></div>
+    <button class="btn violet" id="toResults" disabled>See my result</button>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="s-game" class="screen">
+  <div class="gtop">
+    <button class="btn ghost" id="backMenu" style="font-size:18px;padding:10px 16px">Back to games</button>
+    <span class="muted" id="gname"></span>
+  </div>
+  <h2 id="gtitle"></h2>
+  <div class="howto">
+    <h3>How to play</h3>
+    <ol id="gsteps"></ol>
+    <button class="btn sun" id="hintBtn" style="font-size:18px;padding:8px 16px">💡 Show a hint</button>
+    <div class="hintbox" id="hintBox"></div>
+  </div>
+  <div id="stage"></div>
+</section>
+
+<!-- RESULTS -->
+<section id="s-results" class="screen">
+  <div class="gtop">
+    <button class="btn ghost" id="backMenu2" style="font-size:18px;padding:10px 16px">Back to games</button>
+  </div>
+  <div class="cert">
+    <h2>Great work, <span id="rname"></span>!</h2>
+    <p class="muted" id="rmeta"></p>
+    <div id="rlist"></div>
+    <p style="margin-top:14px;font-size:24px;font-weight:700">Total stars: <span id="rtotal"></span></p>
+  </div>
+  <div class="share">
+    <h3>Send your result to your teacher</h3>
+    <ol style="margin:4px 0 12px;padding-left:26px">
+      <li>Tap <b>Download my result</b> to save it as a PDF.</li>
+      <li>Send the PDF to your teacher on WhatsApp, email or Google Classroom.</li>
+    </ol>
+    <div class="row">
+      <button class="btn" id="dlBtn">Download my result</button>
+      <button class="btn ghost" id="copyBtn">Copy result as text</button>
+    </div>
+    <div class="msg" id="dlMsg"></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ---------- state ---------- */
+const KEY='nova-ai-5games';
+let S={name:'',klass:'',start:'',res:{}};
+try{const raw=localStorage.getItem(KEY); if(raw){const v=JSON.parse(raw); if(v&&v.name) S=v;}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));window.scrollTo(0,0)}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function starsFor(score,total){if(!total)return 0;const p=score/total;return p>=.9?3:p>=.6?2:1}
+
+/* downloads capability (only inside the claude.ai viewer) */
+let dlPromise=null;
+function getDownloads(){
+  if(!dlPromise){dlPromise=(window.claude&&typeof window.claude.use==='function')?window.claude.use('downloads').catch(()=>null):Promise.resolve(null)}
+  return dlPromise;
+}
+getDownloads();
+
+/* ---------- login ---------- */
+let pickedClass='';
+document.querySelectorAll('.classpick button').forEach(b=>b.onclick=()=>{
+  pickedClass=b.dataset.c;
+  document.querySelectorAll('.classpick button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+});
+$('startBtn').onclick=()=>{
+  const n=$('nm').value.trim();
+  if(!n){$('lerr').textContent='Please write your name first.';$('nm').focus();return}
+  if(!pickedClass){$('lerr').textContent='Please choose your class.';return}
+  S={name:n,klass:pickedClass,start:new Date().toISOString(),res:{}};save();
+  $('lerr').textContent='';openMenu();
+};
+$('nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('startBtn').click()});
+
+/* ---------- menu ---------- */
+const GAMES=[
+ {id:'g1',title:'Help Nova get to school',icon:'🏫',c:'#0E9E9A',bl:'Plan Nova’s path from home to school with arrow steps.'},
+ {id:'g2',title:'AI or not AI?',icon:'🧠',c:'#6E5BF5',bl:'Help Nova decide which things use AI.'},
+ {id:'g3',title:'Match the answers',icon:'🔗',c:'#E08A00',bl:'Match each AI question to its right answer.'},
+ {id:'g4',title:'Input or output?',icon:'🎤',c:'#F0525B',bl:'Sort things into Nova’s input and output baskets.'},
+ {id:'g5',title:'Teach Nova',icon:'🐶',c:'#23A865',bl:'Show Nova cats and dogs, then see if Nova learned.'}
+];
+function openMenu(){
+  $('hi').textContent='Hi '+S.name+'! ('+S.klass+')';
+  $('tiles').innerHTML=GAMES.map((g,i)=>{
+    const r=S.res[g.id];
+    return `<button class="tile" style="--c:${g.c}" data-g="${g.id}">
+      ${r?'<span class="done">Done '+'★'.repeat(starsFor(r.score,r.total))+'</span>':''}
+      <span class="ic">${g.icon}</span><span class="gn">Game ${i+1}</span>
+      <span class="tt">${g.title}</span><span class="bl">${g.bl}</span></button>`}).join('');
+  document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>openGame(t.dataset.g));
+  const n=Object.keys(S.res).length;
+  $('doneCount').textContent=n?`You finished ${n} of 5 games.`:'Play at least one game to see your result.';
+  $('toResults').disabled=!n;
+  show('s-menu');
+}
+$('toResults').onclick=openResults;
+$('backMenu').onclick=openMenu;$('backMenu2').onclick=openMenu;
+$('newStudent').onclick=()=>{
+  if(!confirm('Start again as a new student? This result will be cleared from this device.'))return;
+  S={name:'',klass:'',start:'',res:{}};save();$('nm').value='';pickedClass='';
+  document.querySelectorAll('.classpick button').forEach(x=>x.setAttribute('aria-pressed','false'));show('s-login');
+};
+
+/* ---------- game shell ---------- */
+let hints=[],hintI=0;
+function shell(id,steps,hintList){
+  const i=GAMES.findIndex(g=>g.id===id),g=GAMES[i];
+  $('gname').textContent='Game '+(i+1)+' of 5';
+  $('gtitle').textContent=g.icon+' '+g.title;
+  $('gsteps').innerHTML=steps.map(s=>'<li>'+s+'</li>').join('');
+  hints=hintList;hintI=0;$('hintBox').classList.remove('on');$('hintBtn').textContent='💡 Show a hint';
+  show('s-game');
+}
+$('hintBtn').onclick=()=>{
+  const b=$('hintBox');b.textContent='💡 '+hints[hintI%hints.length];b.classList.add('on');
+  hintI++;$('hintBtn').textContent=hints.length>1?'💡 Another hint':'💡 Show a hint';
+};
+function record(id,score,total,detail){S.res[id]={score,total,detail,at:new Date().toISOString()};save()}
+function openGame(id){({g1,g2,g3,g4,g5})[id]()}
+
+/* ---------- GAME 1: Nova to school ---------- */
+const ROWS=5,COLS=6,START=[4,0],GOAL=[0,5];
+const MAPS=[
+ {'3,1':'🌳','4,3':'🚧','2,3':'🌳','1,1':'💧','0,2':'🌳'},
+ {'4,1':'🌳','3,1':'🌳','2,3':'🚧','3,3':'🌳','1,4':'💧','0,1':'🌳','1,1':'🌳','4,4':'💧'}
+];
+const DIRS={U:[-1,0,'⬆️','up'],D:[1,0,'⬇️','down'],L:[0,-1,'⬅️','left'],R:[0,1,'➡️','right']};
+let G1;
+function g1(){
+  shell('g1',[
+    'Nova starts at home 🏠 and must reach school 🏫.',
+    'Tap the arrow buttons to add steps. Each arrow moves Nova one box.',
+    'Nova cannot walk through trees 🌳, puddles 💧 or road works 🚧.',
+    'Tap <b>Go, Nova!</b> to watch Nova follow your steps. Tap a step to remove it.'
+  ],[
+    'Count the boxes: how many steps right, and how many steps up?',
+    'You don’t have to go straight. Walk around the trees like you would on your way to school.',
+    'If Nova bumps into something, only change the step shown in red.',
+    'Try moving Nova a little at a time. Add 2 or 3 steps and press Go to check.'
+  ]);
+  G1={level:0,cmds:[],runs:0,pos:START.slice(),running:false,done:(S.res.g1?S.res.g1.score:0)};
+  $('stage').innerHTML=`
+   <div class="g1wrap">
+     <div class="panel"><p style="font-weight:700;margin-bottom:8px" id="g1lvl"></p><div class="g1grid" id="g1grid"></div></div>
+     <div class="panel">
+       <h3>Nova’s steps</h3>
+       <div class="arrows">
+         <button class="up" data-d="U" aria-label="Up">⬆️</button><button class="lf" data-d="L" aria-label="Left">⬅️</button>
+         <button class="dn" data-d="D" aria-label="Down">⬇️</button><button class="rt" data-d="R" aria-label="Right">➡️</button>
+       </div>
+       <div class="cmds" id="g1cmds"></div>
+       <div class="row" style="margin-top:14px">
+         <button class="btn" id="g1go">Go, Nova!</button>
+         <button class="btn ghost" id="g1undo" style="font-size:18px">Undo</button>
+         <button class="btn ghost" id="g1clr" style="font-size:18px">Clear</button>
+       </div>
+       <div class="msg" id="g1msg"></div>
+       <div id="g1next"></div>
+     </div>
+   </div>`;
+  document.querySelectorAll('.arrows button').forEach(b=>b.onclick=()=>{
+    if(G1.running)return; if(G1.cmds.length>=20){g1say('That is a lot of steps! Try Go, Nova! first.','bad');return}
+    G1.cmds.push(b.dataset.d);g1reset();g1cmds();
+  });
+  $('g1go').onclick=g1run;
+  $('g1undo').onclick=()=>{if(G1.running)return;G1.cmds.pop();g1reset();g1cmds()};
+  $('g1clr').onclick=()=>{if(G1.running)return;G1.cmds=[];g1reset();g1cmds()};
+  g1draw();g1cmds();
+}
+function g1say(t,c){const m=$('g1msg');m.textContent=t;m.className='msg '+(c||'')}
+function g1reset(){G1.pos=START.slice();g1draw();g1say('');$('g1next').innerHTML=''}
+function g1draw(shakeIt){
+  const obs=MAPS[G1.level];
+  $('g1lvl').textContent='Map '+(G1.level+1)+' of '+MAPS.length;
+  let h='';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const k=r+','+c,isHome=r===START[0]&&c===START[1],isSchool=r===GOAL[0]&&c===GOAL[1];
+    const here=G1.pos[0]===r&&G1.pos[1]===c;
+    let inner=obs[k]||'';
+    if(isHome)inner='🏠';if(isSchool)inner='🏫';
+    if(here)inner=`<span class="nova ${shakeIt?'shake':''}">🤖</span>`;
+    h+=`<div class="cell ${obs[k]?'':'road'} ${isHome?'home':''} ${isSchool?'school':''}">${inner}${isHome?'<span class="lbl">Home</span>':''}${isSchool?'<span class="lbl">School</span>':''}</div>`;
+  }
+  $('g1grid').innerHTML=h;
+}
+function g1cmds(active,bad){
+  const box=$('g1cmds');
+  if(!G1.cmds.length){box.innerHTML='<span class="muted" style="font-size:17px;padding:8px">Your steps will show here.</span>';return}
+  box.innerHTML=G1.cmds.map((d,i)=>`<button class="cmd ${i===active?'now':''} ${i===bad?'oops':''}" data-i="${i}" aria-label="Step ${i+1} ${DIRS[d][3]}, tap to remove"><small>${i+1}</small>${DIRS[d][2]}</button>`).join('');
+  box.querySelectorAll('.cmd').forEach(b=>b.onclick=()=>{if(G1.running)return;G1.cmds.splice(+b.dataset.i,1);g1reset();g1cmds()});
+}
+async function g1run(){
+  if(G1.running)return;
+  if(!G1.cmds.length){g1say('Add some arrow steps first.','bad');return}
+  G1.running=true;G1.runs++;G1.pos=START.slice();g1draw();g1say('Nova is walking…');$('g1next').innerHTML='';
+  const obs=MAPS[G1.level];
+  for(let i=0;i<G1.cmds.length;i++){
+    const d=DIRS[G1.cmds[i]],nr=G1.pos[0]+d[0],nc=G1.pos[1]+d[1];
+    g1cmds(i);await sleep(380);
+    if(nr<0||nr>=ROWS||nc<0||nc>=COLS){g1draw(true);g1cmds(null,i);g1say(`Oops! Step ${i+1} goes off the map. Change that step and try again.`,'bad');G1.running=false;return}
+    const o=obs[nr+','+nc];
+    if(o){g1draw(true);g1cmds(null,i);const what=o==='🌳'?'a tree':o==='💧'?'a puddle':'road works';g1say(`Oops! At step ${i+1} Nova bumps into ${what}. Change that step and try again.`,'bad');G1.running=false;return}
+    G1.pos=[nr,nc];g1draw();
+  }
+  g1cmds();
+  if(G1.pos[0]===GOAL[0]&&G1.pos[1]===GOAL[1]){
+    g1say(`Hooray! Nova reached school in ${G1.cmds.length} steps! 🎉`,'good');
+    const doneNow=Math.max(G1.done,G1.level+1);G1.done=doneNow;
+    record('g1',doneNow,MAPS.length,`Maps finished: ${doneNow} of ${MAPS.length}. Times Nova walked: ${G1.runs}.`);
+    if(G1.level<MAPS.length-1){
+      $('g1next').innerHTML='<button class="btn sun" id="g1nx">Next map</button>';
+      $('g1nx').onclick=()=>{G1.level++;G1.cmds=[];g1reset();g1cmds()};
+    }else{
+      $('g1next').innerHTML='<p>You finished both maps! Nova says thank you. 🤖💛</p><button class="btn sun" id="g1bk">Back to games</button>';
+      $('g1bk').onclick=openMenu;
+    }
+  }else{
+    g1say('Nova stopped before reaching school. Add more steps and try again.','bad');
+  }
+  G1.running=false;
+}
+
+/* ---------- GAME 2: AI or not AI ---------- */
+const G2ITEMS=[
+ {e:'🗣️',n:'Voice assistant that answers your questions',ai:true,why:'It understands your voice and learns how people speak. That is AI.'},
+ {e:'💡',n:'Light switch',ai:false,why:'It only turns the light on or off. It does not think or learn.'},
+ {e:'📺',n:'YouTube suggesting videos you may like',ai:true,why:'It learns what you watch and guesses what you will like next.'},
+ {e:'🧮',n:'Simple calculator',ai:false,why:'It follows fixed maths rules. It does not learn anything new.'},
+ {e:'📱',n:'Phone that unlocks when it sees your face',ai:true,why:'It learned to recognise your face from pictures. That is AI.'},
+ {e:'✏️',n:'Pencil sharpener',ai:false,why:'It is just a machine with a blade. No thinking at all.'},
+ {e:'🚗',n:'Self-driving car',ai:true,why:'It looks at the road with cameras and decides where to drive.'},
+ {e:'🌀',n:'Ceiling fan',ai:false,why:'It just spins at the speed you choose.'},
+ {e:'🌍',n:'App that translates English into German',ai:true,why:'It learned languages from lots of examples. That is AI.'},
+ {e:'🚲',n:'Bicycle',ai:false,why:'You do all the work! A bicycle cannot think.'}
+];
+function g2(){
+  shell('g2',[
+    'Nova sees one thing at a time on the card.',
+    'Ask yourself: can this thing <b>learn</b> or <b>make smart choices</b> by itself?',
+    'If yes, tap <b>AI</b>. If it only does the same simple job every time, tap <b>Not AI</b>.',
+    'Read Nova’s answer, then tap <b>Next</b>.'
+  ],[
+    'AI things usually learn from examples, like faces, voices or what you like to watch.',
+    'Not AI things do the same job every time, like a switch or a pencil sharpener.',
+    'Think: does it “guess” or “recognise” something? Then it is probably AI.'
+  ]);
+  const items=shuffle(G2ITEMS);let i=0,score=0;
+  $('stage').innerHTML=`<div class="panel"><div class="progress"><i id="g2bar"></i></div><div id="g2body"></div></div>`;
+  function draw(){
+    $('g2bar').style.width=(i/items.length*100)+'%';
+    if(i>=items.length){
+      record('g2',score,items.length,`Correct answers: ${score} of ${items.length}.`);
+      $('g2body').innerHTML=`<div class="bigcard"><div class="em">🤖</div><div class="nm">You got ${score} out of ${items.length}!</div><p style="margin-top:8px">Now Nova knows how to spot AI.</p></div><button class="btn sun" id="g2bk">Back to games</button> <button class="btn ghost" id="g2again">Play again</button>`;
+      $('g2bk').onclick=openMenu;$('g2again').onclick=g2;return;
+    }
+    const it=items[i];
+    $('g2body').innerHTML=`<p class="muted">Card ${i+1} of ${items.length}</p>
+      <div class="bigcard"><div class="em">${it.e}</div><div class="nm">${it.n}</div></div>
+      <div class="choice" id="g2ch"><button class="ai" data-v="1">🧠 AI</button><button class="notai" data-v="0">🚫 Not AI</button></div>
+      <div class="msg" id="g2msg"></div><div id="g2nx"></div>`;
+    document.querySelectorAll('#g2ch button').forEach(b=>b.onclick=()=>{
+      const pick=b.dataset.v==='1',ok=pick===it.ai;if(ok)score++;
+      document.querySelectorAll('#g2ch button').forEach(x=>x.disabled=true);
+      const m=$('g2msg');m.className='msg '+(ok?'good':'bad');
+      m.textContent=(ok?'Yes! ':'Not quite. ')+'It is '+(it.ai?'AI. ':'not AI. ')+it.why;
+      $('g2nx').innerHTML='<button class="btn" id="g2n">Next</button>';$('g2n').onclick=()=>{i++;draw()};$('g2n').focus();
+    });
+  }
+  draw();
+}
+
+/* ---------- GAME 3: Match ---------- */
+const G3PAIRS=[
+ {q:'What is the full form of AI?',a:'Artificial Intelligence'},
+ {q:'What is input?',a:'Information we give to a computer, like typing, speaking or a photo'},
+ {q:'What is output?',a:'The result a computer gives back, like an answer, a sound or a picture'},
+ {q:'Where is AI used?',a:'In phones, maps, games, voice assistants and video apps'},
+ {q:'Is a simple calculator AI?',a:'No, it is not AI. It only follows fixed rules and does not learn'}
+];
+function g3(){
+  shell('g3',[
+    'On the left are 5 questions. On the right are 5 answers, all mixed up.',
+    'Tap a question first. It turns purple.',
+    'Then tap the answer that matches it. A right match turns green.',
+    'Match all 5 to finish.'
+  ],[
+    'AI is short for two words. The first word means “made by people”.',
+    'Input goes IN to the computer. Output comes OUT of the computer.',
+    'A calculator gives the same answer for 2 + 2 every time. Does it learn?'
+  ]);
+  const answers=shuffle(G3PAIRS.map((p,i)=>({t:p.a,i})));
+  let selQ=null,matched=0,tries=0;
+  $('stage').innerHTML=`<div class="panel"><div class="match">
+     <div class="col">${G3PAIRS.map((p,i)=>`<button class="mi q" data-q="${i}">${p.q}</button>`).join('')}</div>
+     <div class="col">${answers.map(a=>`<button class="mi a" data-a="${a.i}">${a.t}</button>`).join('')}</div>
+   </div><div class="msg" id="g3msg"></div><div id="g3end"></div></div>`;
+  const say=(t,c)=>{const m=$('g3msg');m.textContent=t;m.className='msg '+(c||'')};
+  document.querySelectorAll('.mi.q').forEach(b=>b.onclick=()=>{
+    if(b.classList.contains('ok'))return;
+    document.querySelectorAll('.mi.q').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');selQ=+b.dataset.q;say('Now tap the matching answer.');
+  });
+  document.querySelectorAll('.mi.a').forEach(b=>b.onclick=()=>{
+    if(b.classList.contains('ok'))return;
+    if(selQ===null){say('Tap a question on the left first.','bad');return}
+    tries++;
+    const qb=document.querySelector(`.mi.q[data-q="${selQ}"]`);
+    if(+b.dataset.a===selQ){
+      qb.classList.remove('sel');qb.classList.add('ok');b.classList.add('ok');matched++;selQ=null;say('Correct match! ✅','good');
+      if(matched===G3PAIRS.length){
+        const score=Math.max(0,G3PAIRS.length-(tries-G3PAIRS.length));
+        const sc=Math.max(1,score);
+        record('g3',sc,G3PAIRS.length,`All 5 matched in ${tries} tries.`);
+        say(`All matched in ${tries} tries! 🎉`,'good');
+        $('g3end').innerHTML='<button class="btn sun" id="g3bk">Back to games</button>';$('g3bk').onclick=openMenu;
+      }
+    }else{
+      b.classList.remove('no');void b.offsetWidth;b.classList.add('no');say('Not this one. Read the question again and try another answer.','bad');
+    }
+  });
+}
+
+/* ---------- GAME 4: Input / Output ---------- */
+const G4ITEMS=[
+ {e:'⌨️',n:'Keyboard',t:'in'},{e:'🎤',n:'Microphone',t:'in'},{e:'🖱️',n:'Mouse',t:'in'},
+ {e:'📷',n:'Camera',t:'in'},{e:'👆',n:'Touching the screen',t:'in'},
+ {e:'🔊',n:'Speaker',t:'out'},{e:'🖨️',n:'Printer',t:'out'},{e:'🖥️',n:'Screen showing a picture',t:'out'},
+ {e:'🎧',n:'Headphones',t:'out'},{e:'⏰',n:'Alarm ringing',t:'out'}
+];
+function g4(){
+  shell('g4',[
+    'Nova has two baskets: <b>Input</b> (things we give to the computer) and <b>Output</b> (things the computer gives back).',
+    'Tap one thing from the top. It turns purple.',
+    'Then tap the basket where it belongs.',
+    'Sort all 10 things to finish.'
+  ],[
+    'Input goes IN: you type, click, speak or show something to the computer.',
+    'Output comes OUT: you hear it, see it or get it printed.',
+    'Ask: does this thing help the computer listen/see, or help it talk/show?'
+  ]);
+  let left=shuffle(G4ITEMS),sel=null,score=0,sorted=0;
+  $('stage').innerHTML=`<div class="panel"><div class="chips" id="g4chips"></div>
+    <div class="baskets">
+      <button class="basket in" data-b="in"><h3>⬇️ Input</h3><p class="muted" style="font-size:16px">We give it to the computer</p><div class="got" id="gin"></div></button>
+      <button class="basket out" data-b="out"><h3>⬆️ Output</h3><p class="muted" style="font-size:16px">The computer gives it back</p><div class="got" id="gout"></div></button>
+    </div><div class="msg" id="g4msg"></div><div id="g4end"></div></div>`;
+  const say=(t,c)=>{const m=$('g4msg');m.textContent=t;m.className='msg '+(c||'')};
+  function drawChips(){
+    $('g4chips').innerHTML=left.map((it,i)=>`<button class="chip ${sel===i?'sel':''}" data-i="${i}"><span class="e">${it.e}</span>${it.n}</button>`).join('')||'<span class="muted">All sorted!</span>';
+    document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{sel=+c.dataset.i;drawChips();say('Now tap the Input or Output basket.')});
+  }
+  document.querySelectorAll('.basket').forEach(b=>b.onclick=()=>{
+    if(sel===null){say('Tap a thing at the top first.','bad');return}
+    const it=left[sel],ok=it.t===b.dataset.b;
+    if(ok){score++;say(`Yes! ${it.n} is ${it.t==='in'?'an input':'an output'}.`,'good')}
+    else{say(`Oops! ${it.n} is ${it.t==='in'?'an input — it gives information to the computer':'an output — the computer uses it to give something back'}. Nova put it in the right basket for you.`,'bad')}
+    $(it.t==='in'?'gin':'gout').insertAdjacentHTML('beforeend',`<span title="${esc(it.n)}">${it.e}</span>`);
+    left.splice(sel,1);sel=null;sorted++;drawChips();
+    if(!left.length){
+      record('g4',score,G4ITEMS.length,`Sorted correctly: ${score} of ${G4ITEMS.length}.`);
+      $('g4end').innerHTML=`<p style="font-weight:700;font-size:22px">You sorted ${score} of ${G4ITEMS.length} correctly! 🎉</p><button class="btn sun" id="g4bk">Back to games</button> <button class="btn ghost" id="g4ag">Play again</button>`;
+      $('g4bk').onclick=openMenu;$('g4ag').onclick=g4;
+    }
+  });
+  drawChips();
+}
+
+/* ---------- GAME 5: Teach Nova ---------- */
+const TRAIN=[{e:'🐱',k:'cat'},{e:'🐶',k:'dog'},{e:'🐈',k:'cat'},{e:'🐕',k:'dog'},{e:'😺',k:'cat'},{e:'🦮',k:'dog'},{e:'😸',k:'cat'},{e:'🐩',k:'dog'}];
+const TEST=[{e:'🐈‍⬛',k:'cat'},{e:'🐕‍🦺',k:'dog'},{e:'😻',k:'cat'},{e:'🐶',k:'dog'}];
+function g5(){
+  shell('g5',[
+    'AI learns from examples. You are Nova’s teacher now!',
+    '<b>Step 1:</b> Look at each picture and tap <b>Cat</b> or <b>Dog</b> to teach Nova.',
+    '<b>Step 2:</b> When all 8 have a label, tap <b>Test Nova</b>.',
+    'Nova will guess 4 new pictures using what you taught. Did Nova learn well?'
+  ],[
+    'Look at the ears and the face. Cats have small pointy ears and whiskers.',
+    'If you teach Nova a wrong label, Nova will learn it wrong too. Good examples make good AI!',
+    'You can change a label any time before you test Nova.'
+  ]);
+  const order=shuffle(TRAIN),labels={};
+  $('stage').innerHTML=`<div class="panel">
+    <h3>Step 1: Teach Nova</h3>
+    <div class="train" id="g5train"></div>
+    <div class="row" style="margin-top:16px"><button class="btn" id="g5test" disabled>Test Nova</button><span class="muted" id="g5cnt">0 of 8 labelled</span></div>
+    <div id="g5res"></div></div>`;
+  $('g5train').innerHTML=order.map((p,i)=>`<div class="pet"><div class="em">${p.e}</div><div class="lb">
+     <button data-i="${i}" data-l="cat" aria-pressed="false">Cat</button><button data-i="${i}" data-l="dog" aria-pressed="false">Dog</button></div></div>`).join('');
+  $('g5train').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;labels[i]=b.dataset.l;
+    b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    const n=Object.keys(labels).length;$('g5cnt').textContent=n+' of 8 labelled';$('g5test').disabled=n<8;
+  });
+  $('g5test').onclick=async()=>{
+    let trainOk=0;const votes={cat:{cat:0,dog:0},dog:{cat:0,dog:0}};
+    order.forEach((p,i)=>{if(labels[i]===p.k)trainOk++;votes[p.k][labels[i]]++});
+    const learned=k=>votes[k].cat>=votes[k].dog?'cat':'dog';
+    $('g5res').innerHTML=`<h3 style="margin-top:22px">Step 2: Nova’s test</h3><p>Nova is thinking… 🤖</p><div class="train" id="g5t"></div><div class="msg" id="g5msg"></div><div id="g5end"></div>`;
+    $('g5test').disabled=true;
+    let novaOk=0;
+    for(const t of TEST){
+      await sleep(500);
+      const g=learned(t.k),ok=g===t.k;if(ok)novaOk++;
+      $('g5t').insertAdjacentHTML('beforeend',`<div class="pet"><div class="em">${t.e}</div><div class="guess" style="color:${ok?'var(--green)':'var(--coral)'}">Nova: “${g==='cat'?'Cat':'Dog'}” ${ok?'✅':'❌'}</div></div>`);
+    }
+    const m=$('g5msg');
+    if(novaOk===TEST.length){m.className='msg good';m.textContent=`Nova got all ${TEST.length} right! You are a great AI teacher. 🎉`}
+    else{m.className='msg bad';m.textContent=`Nova got ${novaOk} of ${TEST.length} right. Some of the examples taught Nova the wrong thing. Try teaching again!`}
+    const total=TRAIN.length+TEST.length,score=trainOk+novaOk;
+    record('g5',score,total,`Teaching labels correct: ${trainOk} of 8. Nova's test: ${novaOk} of 4 right.`);
+    $('g5end').innerHTML='<button class="btn sun" id="g5bk">Back to games</button> <button class="btn ghost" id="g5ag">Teach again</button>';
+    $('g5bk').onclick=openMenu;$('g5ag').onclick=g5;
+  };
+}
+
+/* ---------- RESULTS ---------- */
+function fmtDate(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}
+function openResults(){
+  $('rname').textContent=S.name;
+  $('rmeta').textContent=S.klass+' · '+fmtDate(new Date());
+  let tot=0;
+  $('rlist').innerHTML=GAMES.map((g,i)=>{
+    const r=S.res[g.id];
+    if(!r)return `<div class="rrow"><div><b>Game ${i+1}: ${g.title}</b><br><span class="muted">Not played yet</span></div><div class="stars" style="color:#C9DDD9">☆☆☆</div></div>`;
+    const st=starsFor(r.score,r.total);tot+=st;
+    return `<div class="rrow"><div><b>Game ${i+1}: ${g.title}</b><br><span class="muted">${esc(r.detail)}</span></div><div style="text-align:right"><div class="stars" style="color:#E0A000">${'★'.repeat(st)}${'☆'.repeat(3-st)}</div><div class="sc">${r.score} / ${r.total}</div></div></div>`;
+  }).join('');
+  $('rtotal').textContent=tot+' of 15';
+  $('dlMsg').textContent='';
+  show('s-results');
+}
+function resultText(){
+  let t=`AI Adventure with Nova (YoungIT Germany)\nName: ${S.name}\nClass: ${S.klass}\nDate: ${fmtDate(new Date())}\n`;
+  let tot=0;
+  GAMES.forEach((g,i)=>{const r=S.res[g.id];if(r){const st=starsFor(r.score,r.total);tot+=st;t+=`\nGame ${i+1} - ${g.title}: ${r.score}/${r.total} (${st} stars) - ${r.detail}`}else t+=`\nGame ${i+1} - ${g.title}: not played`});
+  return t+`\n\nTotal stars: ${tot} of 15`;
+}
+function buildPDF(){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210;
+  doc.setFillColor(216,243,238);doc.rect(0,0,W,297,'F');
+  doc.setFillColor(14,158,154);doc.rect(0,0,W,46,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('YoungIT Germany',12,10);
+  doc.setFontSize(24);doc.text('AI Adventure with Nova',12,28);
+  doc.setFontSize(13);doc.setFont('helvetica','normal');doc.text('My game result',12,38);
+  doc.setFillColor(255,255,255);doc.roundedRect(12,54,W-24,30,4,4,'F');
+  doc.setTextColor(18,63,60);doc.setFont('helvetica','bold');doc.setFontSize(16);
+  doc.text('Name: '+S.name,18,66);
+  doc.setFont('helvetica','normal');doc.setFontSize(13);
+  doc.text(S.klass+'     Date: '+fmtDate(new Date()),18,76);
+  let y=94,tot=0;
+  GAMES.forEach((g,i)=>{
+    const r=S.res[g.id];
+    doc.setFillColor(255,255,255);doc.roundedRect(12,y,W-24,30,4,4,'F');
+    doc.setFillColor(...hex(g.c));doc.rect(12,y,4,30,'F');
+    doc.setTextColor(18,63,60);doc.setFont('helvetica','bold');doc.setFontSize(13);
+    doc.text(`Game ${i+1}: ${g.title.replace('’',"'")}`,20,y+9);
+    doc.setFont('helvetica','normal');doc.setFontSize(11);
+    if(r){
+      const st=starsFor(r.score,r.total);tot+=st;
+      doc.text(doc.splitTextToSize(r.detail.replace('’',"'"),120),20,y+17);
+      doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`${r.score} / ${r.total}`,W-18,y+12,{align:'right'});
+      doc.setFontSize(11);doc.setTextColor(200,140,0);doc.text(`${st} of 3 stars`,W-18,y+21,{align:'right'});
+    }else{doc.setTextColor(110,130,128);doc.text('Not played yet',20,y+18)}
+    y+=35;
+  });
+  doc.setFillColor(255,200,61);doc.roundedRect(12,y+2,W-24,18,4,4,'F');
+  doc.setTextColor(18,63,60);doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text(`Total stars: ${tot} of 15`,W/2,y+13.5,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(74,107,104);
+  doc.text('Please send this result to your teacher.  -  YoungIT Germany',W/2,287,{align:'center'});
+  return doc;
+}
+function hex(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16))}
+function fileName(){return ('Nova_Result_'+S.name+'_'+S.klass).replace(/[^A-Za-z0-9_\- ]/g,'').replace(/\s+/g,'_')+'.pdf'}
+$('dlBtn').onclick=async()=>{
+  const m=$('dlMsg');m.className='msg';
+  if(!window.jspdf){m.className='msg bad';m.textContent='The PDF maker is still loading. Wait a moment and tap Download again.';return}
+  const doc=buildPDF(),name=fileName();
+  const dl=await getDownloads();
+  if(dl){
+    try{
+      await dl.save({filename:name,data:doc.output('blob')});
+      m.className='msg good';m.textContent='Saved! Now send the PDF to your teacher. 📤';
+    }catch(e){
+      m.className='msg bad';
+      if(e&&e.code==='declined')m.textContent='Download was cancelled. Tap Download my result when you are ready.';
+      else if(e&&e.code==='rate_limited')m.textContent='Please wait a few seconds, then tap Download again.';
+      else m.textContent='Download is not working here. Tap Copy result as text and send that to your teacher instead.';
+    }
+  }else{
+    try{doc.save(name);m.className='msg good';m.textContent='Saved! Now send the PDF to your teacher. 📤'}
+    catch(e){m.className='msg bad';m.textContent='Download is not working here. Tap Copy result as text and send that to your teacher instead.'}
+  }
+};
+$('copyBtn').onclick=async()=>{
+  const m=$('dlMsg'),t=resultText();
+  try{await navigator.clipboard.writeText(t);m.className='msg good';m.textContent='Copied! Paste it in a message to your teacher.'}
+  catch(e){
+    const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();
+    m.className='msg '+(ok?'good':'bad');m.textContent=ok?'Copied! Paste it in a message to your teacher.':'Copy is blocked here. Please use Download my result.';
+  }
+};
+
+/* ---------- boot ---------- */
+if(S.name){openMenu()}
+</script>
+</body>
+</html>
